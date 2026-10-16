@@ -1,0 +1,750 @@
+{
+  "info": {
+    "_postman_id": "studbuddy-phase5-collection",
+    "name": "StudbuddY API Tests",
+    "description": "Complete API test collection for StudbuddY — Phase 3 (Student CRUD) + Phase 4 (JWT Auth).\n\nSetup:\n1. Set the 'baseUrl' variable to http://localhost:8080\n2. Run '02 - Authentication > Login' first\n3. The login test script auto-saves the JWT to {{authToken}}\n4. All student requests use {{authToken}} automatically\n\nDo NOT commit real tokens or passwords.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "Backend base URL. Change port if you modified server.port in application.properties."
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT access token. Auto-populated by the Login request test script. Never commit a real token here."
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string",
+      "description": "ID of the last created student. Auto-populated by Create Student test script."
+    },
+    {
+      "key": "testEmail",
+      "value": "postman.test@example.com",
+      "type": "string",
+      "description": "Email used for test registration/login. Change if this email already exists in your DB."
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health Check",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Public endpoint — no token required.\nExpected: 200 OK\n{\n  \"status\": \"UP\",\n  \"application\": \"StudbuddY\"\n}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Status field is UP', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('UP');",
+                  "});",
+                  "pm.test('Application field present', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.application).to.eql('StudbuddY');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Authentication",
+      "item": [
+        {
+          "name": "Register - Valid User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Tester\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new user.\nExpected: 201 Created\n{\n  \"message\": \"Registration successful. Please log in.\"\n}\n\nNote: If this email already exists, you will get 409. Change {{testEmail}} variable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response has message field', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "});",
+                  "pm.test('Response does NOT contain password', function() {",
+                  "    var body = pm.response.text();",
+                  "    pm.expect(body).to.not.include('password');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register - Duplicate Email (expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Tester\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register the same email twice.\nExpected: 409 Conflict\n{\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"An account with email '...' already exists.\"\n}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409 Conflict', function() {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('Error message present', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register - Missing Fields (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"not-an-email\",\n  \"password\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Submit invalid registration data.\nExpected: 400 Bad Request\n{\n  \"status\": 400,\n  \"message\": \"Validation failed\",\n  \"errors\": {\n    \"name\": \"Name must not be blank\",\n    \"email\": \"Must be a valid email address\",\n    \"password\": \"Password must be at least 8 characters\"\n  }\n}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function() {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Errors object present', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Valid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"TestPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with valid credentials.\nExpected: 200 OK\n{\n  \"token\": \"eyJhbGc...\",\n  \"email\": \"...\",\n  \"name\": \"Postman Tester\",\n  \"message\": \"Login successful\"\n}\n\nThe test script below automatically saves the token to {{authToken}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Token is present', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.token).to.be.a('string');",
+                  "    pm.expect(json.token.length).to.be.greaterThan(10);",
+                  "});",
+                  "pm.test('Token saved to collection variable', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', json.token);",
+                  "    pm.expect(pm.collectionVariables.get('authToken')).to.equal(json.token);",
+                  "    console.log('Token saved. Length:', json.token.length);",
+                  "});",
+                  "pm.test('Response does NOT contain password', function() {",
+                  "    pm.expect(pm.response.text()).to.not.include('password');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Wrong Password (expect 401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"WrongPassword999!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with wrong password.\nExpected: 401 Unauthorized\n{\n  \"status\": 401,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Invalid email or password\"\n}\n\nNote: The same message is returned whether the email doesn't exist OR the password is wrong.\nThis prevents email enumeration attacks."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Generic error message (no hint about email vs password)', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.eql('Invalid email or password');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Unknown Email (expect 401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody@doesnotexist.com\",\n  \"password\": \"SomePassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with an email that was never registered.\nExpected: 401 Unauthorized — same generic message as wrong password."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Student CRUD",
+      "item": [
+        {
+          "name": "POST Create Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aarav Sharma\",\n  \"email\": \"aarav.postman@example.com\",\n  \"branch\": \"Computer Engineering\",\n  \"year\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Create a new student. Requires valid JWT in Authorization header.\nExpected: 201 Created\n{\n  \"id\": <number>,\n  \"name\": \"Aarav Sharma\",\n  \"email\": \"aarav.postman@example.com\",\n  \"branch\": \"Computer Engineering\",\n  \"year\": 2\n}\n\nTest script captures the ID into {{studentId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response has id, name, email, branch, year', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.id).to.be.a('number');",
+                  "    pm.expect(json.name).to.eql('Aarav Sharma');",
+                  "    pm.expect(json.email).to.eql('aarav.postman@example.com');",
+                  "    pm.expect(json.branch).to.eql('Computer Engineering');",
+                  "    pm.expect(json.year).to.eql(2);",
+                  "});",
+                  "pm.test('Student ID saved to collection variable', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('studentId', json.id);",
+                  "    console.log('Student ID saved:', json.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET All Students",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Retrieve all students. Requires valid JWT.\nExpected: 200 OK — JSON array of student objects.\nIf no students exist: 200 with empty array []."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is an array', function() {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});",
+                  "pm.test('Array contains at least one student', function() {",
+                  "    pm.expect(pm.response.json().length).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Student by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "Retrieve a single student by ID.\nExpected: 200 OK — single student object.\nIf ID not found: 404 Not Found."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('ID matches requested ID', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('studentId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT Update Student",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aarav Sharma Updated\",\n  \"email\": \"aarav.updated@example.com\",\n  \"branch\": \"Information Technology\",\n  \"year\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "Update an existing student. All fields required.\nExpected: 200 OK — updated student object.\nIf ID not found: 404. If new email conflicts: 409."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Name was updated', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.name).to.eql('Aarav Sharma Updated');",
+                  "});",
+                  "pm.test('Branch was updated', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.branch).to.eql('Information Technology');",
+                  "});",
+                  "pm.test('Year was updated to 3', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.year).to.eql(3);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Student (Confirm Update)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "Retrieve the updated student to confirm changes persisted.\nExpected: 200 OK — should show updated name, email, branch, year."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Updated name persisted', function() {",
+                  "    pm.expect(pm.response.json().name).to.eql('Aarav Sharma Updated');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE Student",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "Delete a student by ID.\nExpected: 204 No Content — empty body, student removed from database."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204 No Content', function() {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "pm.test('Response body is empty', function() {",
+                  "    pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Deleted Student (expect 404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "{{studentId}}"]
+            },
+            "description": "Try to retrieve a student that was just deleted.\nExpected: 404 Not Found\n{\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Student not found with id: <id>\"\n}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Error message contains the ID', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.include(pm.collectionVariables.get('studentId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Negative Tests",
+      "item": [
+        {
+          "name": "GET Students - No Token (expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Call a protected endpoint with NO Authorization header.\nExpected: 401 Unauthorized.\nSpring Security blocks this before the controller even runs."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Students - Malformed Token (expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer this.is.not.a.valid.jwt.token" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Send a malformed token that doesn't parse as a valid JWT.\nExpected: 401 Unauthorized.\nJwtService.validateToken() returns false → no SecurityContext set → 401."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Students - Wrong Signature (expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJpYXQiOjE3Mjg5MDAwMDAsImV4cCI6OTk5OTk5OTk5OX0.INVALIDSIGNATURE_tampered" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Send a JWT with a tampered/wrong signature.\nExpected: 401 Unauthorized.\nJJWT throws SignatureException → validateToken() returns false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Create Student - Invalid Payload (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"not-an-email\",\n  \"branch\": \"\",\n  \"year\": 9\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Create a student with invalid fields.\nExpected: 400 Bad Request\n{\n  \"status\": 400,\n  \"message\": \"Validation failed\",\n  \"errors\": {\n    \"name\": \"Name must not be blank\",\n    \"email\": \"Email must be a valid email address\",\n    \"branch\": \"Branch must not be blank\",\n    \"year\": \"Year must be at most 4\"\n  }\n}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function() {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Errors object present with field details', function() {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Student - Nonexistent ID (expect 404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/students/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students", "999999"]
+            },
+            "description": "Request a student ID that definitely doesn't exist.\nExpected: 404 Not Found\n{\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Student not found with id: 999999\"\n}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Error message mentions the ID', function() {",
+                  "    pm.expect(pm.response.json().message).to.include('999999');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Create Student - Duplicate Email (expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Another Student\",\n  \"email\": \"aarav.postman@example.com\",\n  \"branch\": \"Mechanical Engineering\",\n  \"year\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "students"]
+            },
+            "description": "Try to create two students with the same email.\nNote: First run 'POST Create Student' to create the first one, then run this.\nExpected: 409 Conflict\n{\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"A student with email '...' already exists.\"\n}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409 Conflict', function() {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

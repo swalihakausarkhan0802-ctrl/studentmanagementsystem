@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pom.xml — The "recipe book" for our Spring Boot project.
+  Maven reads this file to know:
+    1. What our project is called
+    2. What libraries (dependencies) to download
+    3. How to compile and build the project
+
+  Think of it like package.json in Node.js/React projects.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      parent: We "inherit" from Spring Boot's parent POM.
+      This gives us pre-configured versions for hundreds of libraries
+      so we don't have to specify versions manually.
+      Spring Boot 3.3.x is compatible with Java 17, 21, and newer (incl. Java 26).
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <!-- Our project's identity — like the "name" and "version" in package.json -->
+    <groupId>com.studbuddy</groupId>          <!-- Company/team identifier (like a reverse domain) -->
+    <artifactId>backend</artifactId>          <!-- Project name -->
+    <version>0.0.1-SNAPSHOT</version>         <!-- Current version (SNAPSHOT = still in development) -->
+    <name>backend</name>
+    <description>StudbuddY Backend - Student Management System API</description>
+    <packaging>jar</packaging>                <!-- Output: a single .jar file we can run -->
+
+    <properties>
+        <!--
+          Java version: We use 21 here as the source/target compatibility level.
+          This is the LTS (Long Term Support) version and works perfectly fine
+          even though your JDK is Java 26. Java is backward compatible.
+        -->
+        <java.version>21</java.version>
+    </properties>
+
+    <!--
+      dependencies: The libraries our project needs.
+      Maven will automatically download these from the internet (like npm install).
+
+      Phase 2 dependencies only — no Security, no JWT, no Lombok yet.
+    -->
+    <dependencies>
+
+        <!--
+          spring-boot-starter-web:
+          Everything needed to create REST APIs — includes:
+            - Spring MVC (maps URLs to Java methods)
+            - Tomcat (built-in web server, so we don't need separate Apache/Nginx)
+            - Jackson (converts Java objects to/from JSON)
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+          spring-boot-starter-data-jpa:
+          Everything needed to talk to a database — includes:
+            - JPA (Java Persistence API): A standard specification
+            - Hibernate: The actual implementation that converts Java objects to SQL
+            - Spring Data: Makes database queries almost automatic
+          We'll use this in Phase 3 when we create the Student entity.
+          For now it just needs to be present.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!--
+          mysql-connector-j:
+          The JDBC driver — the "translator" that lets Java speak to MySQL.
+          Without this, Spring Boot has no idea how to connect to MySQL.
+          "runtime" means we only need it when the app is actually running,
+          not during compilation.
+        -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--
+          spring-boot-starter-test:
+          Testing libraries (JUnit, Mockito, etc.).
+          "test" scope means these are only used during testing, not in production.
+          We'll use these in later phases.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+          spring-boot-starter-validation:
+          Provides Java Bean Validation (JSR-380) annotations such as:
+            - @NotBlank  → field must not be null or empty string
+            - @Email     → field must look like an email address
+            - @Min / @Max → numeric field must be within a range
+          Without this, @Valid in the controller does nothing.
+          Hibernate Validator is the underlying implementation.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!--
+          spring-boot-starter-security:
+          Adds the entire Spring Security framework:
+            - SecurityFilterChain: intercepts every HTTP request before it reaches a controller
+            - AuthenticationManager: verifies username+password
+            - BCryptPasswordEncoder: hashes passwords securely
+            - Many more components we'll configure in SecurityConfig.java
+          Once this is on the classpath, Spring Boot auto-secures everything.
+          We must explicitly configure which endpoints are public and which need a token.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!--
+          JJWT (Java JWT) — the maintained JWT library for Spring Boot 3.x
+          We need THREE jars:
+          1. jjwt-api     → the interfaces/annotations we use in our code (compile scope)
+          2. jjwt-impl    → the actual implementation (runtime — not needed at compile time)
+          3. jjwt-jackson → lets JJWT parse JSON claims using Jackson (runtime)
+
+          Version 0.12.x is the current stable release compatible with Java 21+ and Spring Boot 3.x.
+          It uses a fluent builder API: Jwts.builder().subject(...).signWith(...).compact()
+        -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.6</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+              spring-boot-maven-plugin:
+              Allows us to run "mvnw spring-boot:run" to start the app.
+              Also packages everything into a single executable JAR file.
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

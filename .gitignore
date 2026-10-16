@@ -1,0 +1,38 @@
+# Java compiled class files
+*.class
+
+# Java JAR/WAR/EAR files (compiled build artifacts)
+*.jar
+*.war
+*.ear
+
+# Maven build output folder
+target/
+
+# Maven wrapper folder (can be re-generated)
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE files — VS Code
+.vscode/
+*.code-workspace
+
+# IDE files — IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# IDE files — Eclipse
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ⚠️ IMPORTANT: Never commit real credentials!
+# If you create a local-only config file with real passwords, add it here:
+application-local.properties
+application-secret.properties
+.env
